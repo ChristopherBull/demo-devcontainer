@@ -5,10 +5,22 @@ happen there rather than on your machine.
 [Claude Code](https://code.claude.com/docs/en/devcontainer) is the worked example throughout. See
 [using a different agent](#using-a-different-agent) to swap in Codex, Gemini or Copilot.
 
-| Example | Files | Use when |
+| Example | Config | Use when |
 | --- | --- | --- |
-| [Single container](.devcontainer/devcontainer.json) | one `devcontainer.json` | Tooling only. Start here. |
-| [Compose + database](.devcontainer/compose/) | `devcontainer.json` + `docker-compose.yml` | Your app needs a sibling service such as Postgres. |
+| Single container | [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json) | Tooling only. Start here. |
+| Compose + database | [`.devcontainer/compose/devcontainer.json`](.devcontainer/compose/devcontainer.json) | Your app needs a sibling service such as Postgres. |
+
+```text
+.devcontainer/
+├── devcontainer.json      # the default config
+└── compose/               # a second config, complete in itself
+    ├── devcontainer.json
+    └── docker-compose.yml
+```
+
+Tools open `.devcontainer/devcontainer.json` unless you tell them otherwise. A subfolder one level
+down holds an alternative configuration, so `compose/` neither extends nor modifies the file above
+it. Start that one and only the files in that folder apply.
 
 > [!TIP]
 > Treat these as a starting point. A dev container should carry the tooling your project actually
