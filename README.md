@@ -1,7 +1,9 @@
-# demo-devcontainer
+# Dev Containers for AI Coding Agents
 
-Minimal dev containers for running [Claude Code](https://code.claude.com/docs/en/devcontainer)
-inside a container, so the commands it runs happen there rather than on your machine.
+Minimal dev containers for running an AI coding agent inside a container, so the commands it runs
+happen there rather than on your machine.
+[Claude Code](https://code.claude.com/docs/en/devcontainer) is the worked example throughout. See
+[using a different agent](#using-a-different-agent) to swap in Codex, Gemini or Copilot.
 
 | Example | Files | Use when |
 | --- | --- | --- |
@@ -21,7 +23,8 @@ inside a container, so the commands it runs happen there rather than on your mac
 2. Open this folder, run **Dev Containers: Reopen in Container** from the Command Palette, then
    pick a config. (The `devcontainer` CLI doesn't prompt. Pass
    `--config .devcontainer/compose/devcontainer.json` for the multi-container one.)
-3. Open a terminal in the container, run `claude`, and follow the sign-in prompt.
+3. Open a terminal in the container, run the agent's CLI (`claude` here), and follow the sign-in
+   prompt.
 
 ### JetBrains IDEs
 
@@ -29,13 +32,14 @@ Both configs work in the paid JetBrains IDEs, such as IntelliJ IDEA Ultimate and
 Professional. The Dev Containers plugin lists compatibility with those builds, but not with the
 Community editions [\[1\]](https://plugins.jetbrains.com/plugin/21962-dev-containers) (checked
 2026-09-21). Open the project and start the container from **Remote Development > Dev Containers**,
-or from the `devcontainer.json` itself.
-Expect a slow first start while the IDE downloads its backend into the container.
+or from the `devcontainer.json` itself. Expect a slow first start while the IDE downloads its
+backend into the container.
 
 You don't need to change anything. Both files carry a `customizations.jetbrains` block that
-installs the Claude Code plugin into the container's IDE backend, where the plugin has to run. The
-plugin then calls the `claude` CLI that the feature installed. VS Code ignores the JetBrains block,
-and JetBrains ignores the VS Code extension.
+installs the Claude Code plugin into the container's IDE backend, which is where a plugin has to
+run. The plugin then calls the CLI that the feature installed. VS Code ignores the JetBrains block,
+and JetBrains ignores the VS Code extension. Change the plugin ID if your agent publishes one, and
+drop the block if it doesn't, since any of these CLIs will run in the IDE terminal regardless.
 
 ## What's in the config
 
@@ -43,7 +47,7 @@ and JetBrains ignores the VS Code extension.
 | --- | --- |
 | `image` | Plain Ubuntu dev container base. Swap in your project's image or a Dockerfile. |
 | `features` | Installs the Claude Code CLI and VS Code extension via the [official feature](https://github.com/anthropics/devcontainer-features/tree/main/src/claude-code). The `:1.0` tag pins the install script, not the CLI version. |
-| `remoteUser` | Runs as a non-root user, which `--dangerously-skip-permissions` requires. |
+| `remoteUser` | Runs as a non-root user. Claude Code refuses to start as root with `--dangerously-skip-permissions`, and running an agent as root is worth avoiding anyway. |
 | `mounts` + `CLAUDE_CONFIG_DIR` | Keeps auth and settings in a named volume so rebuilds don't log you out. `${devcontainerId}` scopes the volume to this project. |
 
 > [!NOTE]
@@ -60,7 +64,7 @@ Say your app needs a database, and you'd rather not install Postgres on your own
 Pick the [`compose`](.devcontainer/compose/) config when you reopen in a container. Two containers
 start together:
 
-- `app`, the one your editor and Claude attach to
+- `app`, the one your editor and agent attach to
 - `db`, running Postgres
 
 Your code talks to the database at `db:5432`, using the `DATABASE_URL` that is already set for you.
@@ -116,18 +120,14 @@ Node feature and install the CLI yourself:
 "containerEnv": { "CODEX_HOME": "/home/vscode/.codex" }
 ```
 
-Community features exist for most of these if you'd rather not hand-roll it, though none of them
-are vendor maintained.
+Community features exist for most of these, though none of them are vendor maintained.
 
-The volume works inside a container. These CLIs prefer the operating system keychain when
-there is one, but a Linux container normally has no Secret Service, so they fall back to a file in
-the config directory. Gemini CLI
-[says so in its source](https://github.com/google-gemini/gemini-cli/blob/main/packages/core/src/services/keychainService.ts)
-and writes an encrypted `gemini-credentials.json` into `~/.gemini`; Copilot CLI
-[does the same](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference)
-for its MCP tokens. The exception is Codex, where
-[`cli_auth_credentials_store`](https://learn.chatgpt.com/docs/config-file/config-reference) can be
-set to `keyring` and the credential then leaves `auth.json`.
+It matters where the install happens. A feature becomes a step in the generated Dockerfile, so
+Docker caches it as an image layer and later rebuilds reuse it. A `postCreateCommand` runs after
+the container is built, inside the container, and none of it is cached: every rebuild fetches and
+installs the CLI again. That is a few seconds for one npm package and minutes for a larger
+toolchain. To get the caching back without waiting for a vendor feature, move the install into your
+own Dockerfile.
 
 ## What this setup can't enforce
 
