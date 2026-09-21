@@ -1,5 +1,5 @@
-# Names the Compose project, so it lists as one tidy group in Docker Desktop.
-# Without this it would inherit this folder's name: "compose".
+# Groups both containers under one name in Docker Desktop.
+# Without this they inherit this folder's name, "compose".
 name: demo-devcontainer
 
 services:

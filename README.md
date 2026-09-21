@@ -9,10 +9,10 @@ inside a container, so the commands it runs happen there rather than on your mac
 | [Compose + database](.devcontainer/compose/) | `devcontainer.json` + `docker-compose.yml` | Your app needs a sibling service such as Postgres. |
 
 > [!TIP]
-> These are starting points, not finished environments. A dev container should carry the tooling
-> your project actually needs and not much else, so add Node, Python, a database client or whatever
-> else applies through [features](https://containers.dev/features) or your own Dockerfile. Neither
-> example includes a project toolchain, because neither knows what you are building.
+> Treat these as a starting point. A dev container should carry the tooling your project actually
+> needs and little more, so add Node, Python, a database client or whatever else applies through
+> [features](https://containers.dev/features) or your own Dockerfile. Neither example installs a
+> project toolchain, since that depends entirely on what you are building.
 
 ## How to use it
 
@@ -25,15 +25,15 @@ inside a container, so the commands it runs happen there rather than on your mac
 
 ### JetBrains IDEs
 
-Both configs work in the paid JetBrains IDEs (IntelliJ IDEA Ultimate, PyCharm Professional and so
-on). Community editions don't include dev container support. Open the project and start the
-container from **Remote Development > Dev Containers**, or from the `devcontainer.json` itself. The
-IDE downloads its backend into the container on first use, so the first start is slow.
+Both configs work in the paid JetBrains IDEs, such as IntelliJ IDEA Ultimate and PyCharm
+Professional. The Community editions have no dev container support. Open the project and start the
+container from **Remote Development > Dev Containers**, or from the `devcontainer.json` itself.
+Expect a slow first start while the IDE downloads its backend into the container.
 
-No config changes are needed: both files already carry a `customizations.jetbrains` block that
-installs the Claude Code plugin into the container's IDE backend, which is where it has to live.
-VS Code ignores that block, and JetBrains ignores the VS Code extension the feature installs. The
-plugin runs the `claude` CLI from the IDE terminal, and the feature has already put it there.
+You don't need to change anything. Both files carry a `customizations.jetbrains` block that
+installs the Claude Code plugin into the container's IDE backend, where the plugin has to run. The
+plugin then calls the `claude` CLI that the feature installed. VS Code ignores the JetBrains block,
+and JetBrains ignores the VS Code extension.
 
 ## What's in the config
 
@@ -73,15 +73,15 @@ Three settings do that work:
 | `name:` (in `docker-compose.yml`) | Lists both containers as one `demo-devcontainer` group in Docker Desktop. |
 | no `ports:` on `db` | Keeps the database private to `app`. |
 
-One habit to unlearn: with Compose, volumes and environment variables go in `docker-compose.yml`,
-not in `devcontainer.json`.
+With Compose, volumes and environment variables go in `docker-compose.yml` rather than in
+`devcontainer.json`.
 
 ### What about running `docker` inside the container?
 
-You can't, and here you don't need to. Your editor starts both containers from your machine, so
-`app` and `db` sit side by side without either one needing Docker inside it. Handing a container
-access to Docker (by mounting the Docker socket) is close to giving it root on your machine, which
-is why this example doesn't.
+There is no Docker inside either container, and this setup doesn't need any. Your editor starts
+both containers from your machine, so `app` and `db` sit side by side. Handing a container access
+to Docker, by mounting the Docker socket, comes close to giving it root on your machine, so this
+example leaves it out.
 
 If you do need `docker`, run it in a terminal on your machine. Image builds and compose commands
 are fine that way. The one thing that won't work is a program inside the container that starts
@@ -114,10 +114,10 @@ Node feature and install the CLI yourself:
 "containerEnv": { "CODEX_HOME": "/home/vscode/.codex" }
 ```
 
-Community features exist for most of these if you'd rather not hand-roll it, though nobody's
-vendor supports them.
+Community features exist for most of these if you'd rather not hand-roll it, though none of them
+are vendor maintained.
 
-The volume trick holds up in a container. These CLIs prefer the operating system keychain when
+The volume works inside a container. These CLIs prefer the operating system keychain when
 there is one, but a Linux container normally has no Secret Service, so they fall back to a file in
 the config directory. Gemini CLI
 [says so in its source](https://github.com/google-gemini/gemini-cli/blob/main/packages/core/src/services/keychainService.ts)
@@ -134,12 +134,12 @@ goes further than these examples: an egress firewall (`init-firewall.sh` plus th
 `NET_RAW` capabilities), managed settings at `/etc/claude-code/managed-settings.json`, and a fuller
 toolchain. Your IT team could go further again and publish a hardened image for everyone to pin.
 
-Be clear about what that buys you, though. `devcontainer.json` is just a file in the repository,
-and anyone can edit it. Point it at a plain Ubuntu image, drop the firewall, and the protections
-leave with it. A hardened image is a sensible default, not a control.
+That only goes so far. `devcontainer.json` is a file in the repository like any other, and anyone
+can edit it. Point it at a plain Ubuntu image, drop the firewall, and the protections leave with
+it. A hardened image gives you a good default and nothing stronger.
 
-Whatever has to hold sits underneath the container: Windows and endpoint policy for who can run
-Docker and with what rights, and the network layer for egress allowlists and DNS. Those apply
-whichever image somebody picks. Claude Code's own policy works the same way, which is why
-[managed settings](https://code.claude.com/docs/en/server-managed-settings) can be delivered by MDM
-instead of being committed to a repo.
+Real enforcement has to sit below the container: Windows and endpoint policy for who can run Docker
+and with what rights, and the network layer for egress allowlists and DNS. Those hold whichever
+image somebody picks. Anthropic makes the same point about Claude Code's own policy: its
+[managed settings](https://code.claude.com/docs/en/server-managed-settings) can come from MDM
+instead of a file in the repo, for exactly this reason.
