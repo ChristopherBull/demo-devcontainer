@@ -26,8 +26,10 @@ inside a container, so the commands it runs happen there rather than on your mac
 ### JetBrains IDEs
 
 Both configs work in the paid JetBrains IDEs, such as IntelliJ IDEA Ultimate and PyCharm
-Professional. The Community editions have no dev container support. Open the project and start the
-container from **Remote Development > Dev Containers**, or from the `devcontainer.json` itself.
+Professional. The Dev Containers plugin lists compatibility with those builds, but not with the
+Community editions [\[1\]](https://plugins.jetbrains.com/plugin/21962-dev-containers) (checked
+2026-09-21). Open the project and start the container from **Remote Development > Dev Containers**,
+or from the `devcontainer.json` itself.
 Expect a slow first start while the IDE downloads its backend into the container.
 
 You don't need to change anything. Both files carry a `customizations.jetbrains` block that
