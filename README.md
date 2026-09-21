@@ -8,6 +8,12 @@ inside a container, so the commands it runs happen there rather than on your mac
 | [Single container](.devcontainer/devcontainer.json) | one `devcontainer.json` | Tooling only. Start here. |
 | [Compose + database](.devcontainer/compose/) | `devcontainer.json` + `docker-compose.yml` | Your app needs a sibling service such as Postgres. |
 
+> [!TIP]
+> These are starting points, not finished environments. A dev container should carry the tooling
+> your project actually needs and not much else, so add Node, Python, a database client or whatever
+> else applies through [features](https://containers.dev/features) or your own Dockerfile. Neither
+> example includes a project toolchain, because neither knows what you are building.
+
 ## How to use it
 
 1. Install [VS Code](https://code.visualstudio.com/) and the
@@ -16,6 +22,18 @@ inside a container, so the commands it runs happen there rather than on your mac
    pick a config. (The `devcontainer` CLI doesn't prompt. Pass
    `--config .devcontainer/compose/devcontainer.json` for the multi-container one.)
 3. Open a terminal in the container, run `claude`, and follow the sign-in prompt.
+
+### JetBrains IDEs
+
+Both configs work in the paid JetBrains IDEs (IntelliJ IDEA Ultimate, PyCharm Professional and so
+on). Community editions don't include dev container support. Open the project and start the
+container from **Remote Development > Dev Containers**, or from the `devcontainer.json` itself. The
+IDE downloads its backend into the container on first use, so the first start is slow.
+
+No config changes are needed: both files already carry a `customizations.jetbrains` block that
+installs the Claude Code plugin into the container's IDE backend, which is where it has to live.
+VS Code ignores that block, and JetBrains ignores the VS Code extension the feature installs. The
+plugin runs the `claude` CLI from the IDE terminal, and the feature has already put it there.
 
 ## What's in the config
 
@@ -74,9 +92,54 @@ containers of its own, such as a test suite that spins up a temporary database.
 > delete. Never point a container like this at a real or shared database, and don't mount your own
 > secrets, such as `~/.ssh`, into it.
 
-## Deliberately left out
+## Using a different agent
+
+Only two parts of these configs are Claude-specific: the feature that installs the CLI, and the
+volume that keeps you signed in. Swap those and everything else stays as it is.
+
+| Agent | Install | Config directory | Variable that moves it |
+| --- | --- | --- | --- |
+| Claude Code | `ghcr.io/anthropics/devcontainer-features/claude-code:1.0` | `~/.claude` | `CLAUDE_CONFIG_DIR` |
+| OpenAI Codex CLI | `npm install -g @openai/codex` | `~/.codex` | `CODEX_HOME` |
+| Gemini CLI | `npm install -g @google/gemini-cli` | `~/.gemini` | `GEMINI_CONFIG_DIR` |
+| GitHub Copilot CLI | `npm install -g @github/copilot` | `~/.copilot` | `COPILOT_HOME` |
+
+Claude Code is the only one with a vendor-maintained dev container feature. For the others, add the
+Node feature and install the CLI yourself:
+
+```json
+"features": { "ghcr.io/devcontainers/features/node:1": {} },
+"postCreateCommand": "npm install -g @openai/codex",
+"mounts": ["source=codex-config-${devcontainerId},target=/home/vscode/.codex,type=volume"],
+"containerEnv": { "CODEX_HOME": "/home/vscode/.codex" }
+```
+
+Community features exist for most of these if you'd rather not hand-roll it, though nobody's
+vendor supports them.
+
+The volume trick holds up in a container. These CLIs prefer the operating system keychain when
+there is one, but a Linux container normally has no Secret Service, so they fall back to a file in
+the config directory. Gemini CLI
+[says so in its source](https://github.com/google-gemini/gemini-cli/blob/main/packages/core/src/services/keychainService.ts)
+and writes an encrypted `gemini-credentials.json` into `~/.gemini`; Copilot CLI
+[does the same](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference)
+for its MCP tokens. The exception is Codex, where
+[`cli_auth_credentials_store`](https://learn.chatgpt.com/docs/config-file/config-reference) can be
+set to `keyring` and the credential then leaves `auth.json`.
+
+## What this setup can't enforce
 
 Anthropic's [reference container](https://github.com/anthropics/claude-code/tree/main/.devcontainer)
-adds an egress firewall (`init-firewall.sh` plus `NET_ADMIN`/`NET_RAW` capabilities), managed
-settings at `/etc/claude-code/managed-settings.json`, and a fuller toolchain. None of it is
-required to run Claude Code, so start here and copy those pieces in when you need them.
+goes further than these examples: an egress firewall (`init-firewall.sh` plus the `NET_ADMIN` and
+`NET_RAW` capabilities), managed settings at `/etc/claude-code/managed-settings.json`, and a fuller
+toolchain. Your IT team could go further again and publish a hardened image for everyone to pin.
+
+Be clear about what that buys you, though. `devcontainer.json` is just a file in the repository,
+and anyone can edit it. Point it at a plain Ubuntu image, drop the firewall, and the protections
+leave with it. A hardened image is a sensible default, not a control.
+
+Whatever has to hold sits underneath the container: Windows and endpoint policy for who can run
+Docker and with what rights, and the network layer for egress allowlists and DNS. Those apply
+whichever image somebody picks. Claude Code's own policy works the same way, which is why
+[managed settings](https://code.claude.com/docs/en/server-managed-settings) can be delivered by MDM
+instead of being committed to a repo.
