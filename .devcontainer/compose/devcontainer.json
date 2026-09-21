@@ -7,5 +7,10 @@
   "features": {
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
   },
-  "remoteUser": "vscode"
+  "remoteUser": "vscode",
+  "customizations": {
+    "jetbrains": {
+      "plugins": ["com.anthropic.code.plugin"]
+    }
+  }
 }

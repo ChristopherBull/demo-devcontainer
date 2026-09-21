@@ -10,5 +10,10 @@
   ],
   "containerEnv": {
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+  },
+  "customizations": {
+    "jetbrains": {
+      "plugins": ["com.anthropic.code.plugin"]
+    }
   }
 }
