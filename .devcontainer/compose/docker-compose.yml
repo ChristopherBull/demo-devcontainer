@@ -1,0 +1,33 @@
+# Names the Compose project, so it lists as one tidy group in Docker Desktop.
+# Without this it would inherit this folder's name: "compose".
+name: demo-devcontainer
+
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/base:ubuntu
+    # Keeps the container alive; the editor attaches to it rather than to a running app.
+    command: sleep infinity
+    volumes:
+      - ../..:/workspaces/demo-devcontainer:cached
+      - claude-code-config:/home/vscode/.claude
+    environment:
+      CLAUDE_CONFIG_DIR: /home/vscode/.claude
+      DATABASE_URL: postgres://demo:demo@db:5432/demo
+    depends_on:
+      - db
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    # Throwaway credentials. No `ports:` block, so the database is reachable
+    # from the app container as `db:5432` but not from the host or the network.
+    environment:
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo
+      POSTGRES_DB: demo
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  claude-code-config:
+  db-data:

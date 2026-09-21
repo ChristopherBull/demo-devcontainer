@@ -1,15 +1,20 @@
 # demo-devcontainer
 
-A minimal dev container that runs [Claude Code](https://code.claude.com/docs/en/devcontainer)
-inside an isolated container, so commands Claude runs execute there rather than on your machine.
+Minimal dev containers that run [Claude Code](https://code.claude.com/docs/en/devcontainer)
+inside a container, so commands Claude runs execute there rather than on your machine.
 
-The whole setup is one file: [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json).
+| Example | Files | Use when |
+| --- | --- | --- |
+| [Single container](.devcontainer/devcontainer.json) | one `devcontainer.json` | Tooling only — the default. |
+| [Compose + database](.devcontainer/compose/) | `devcontainer.json` + `docker-compose.yml` | Your app needs a sibling service such as Postgres. |
 
 ## How to use it
 
 1. Install [VS Code](https://code.visualstudio.com/) and the
    [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) (typically pre-installed).
-2. Open this folder and run **Dev Containers: Reopen in Container** from the Command Palette.
+2. Open this folder and run **Dev Containers: Reopen in Container** from the Command Palette,
+   then pick a config. (The `devcontainer` CLI doesn't prompt — pass
+   `--config .devcontainer/compose/devcontainer.json` for the multi-container one.)
 3. Open a terminal in the container, run `claude`, and follow the sign-in prompt.
 
 ## What's in the config
@@ -31,13 +36,29 @@ The whole setup is one file: [`.devcontainer/devcontainer.json`](.devcontainer/d
 > `CLAUDE_CODE_OAUTH_TOKEN`, or run the container somewhere central such as GitHub Codespaces,
 > where the state stays with the container host rather than the desk.
 
+## Multi-container example
+
+[`.devcontainer/compose/`](.devcontainer/compose/) adds Postgres alongside the tooling container.
+The editor attaches to `app`, `db` starts and stops with it, and the database is reachable at
+`db:5432` (pre-wired as `DATABASE_URL`) but published nowhere else.
+
+Two things differ from the single-container config: volumes and environment variables live in
+`docker-compose.yml` rather than `devcontainer.json`, and the top-level `name:` groups the
+services as `demo-devcontainer` in Docker Desktop instead of this folder's name, `compose`.
+
+**No Docker-in-Docker needed.** The extension runs `docker compose` on the host, so `app` and `db`
+are siblings — no Docker socket or nested daemon inside the container. You'd only want one if
+Claude itself had to run `docker`, and mounting the host's `/var/run/docker.sock` gives a session
+root-equivalent access to the host, so prefer sibling services.
+
+> [!IMPORTANT]
+> The database here is disposable: throwaway credentials, no published port, data in a named
+> volume. Don't point an agent's container at a shared or production instance, and don't mount host
+> secrets such as `~/.ssh`.
+
 ## Deliberately left out
 
 Anthropic's [reference container](https://github.com/anthropics/claude-code/tree/main/.devcontainer)
 adds an egress firewall (`init-firewall.sh` plus `NET_ADMIN`/`NET_RAW` capabilities), managed
 settings at `/etc/claude-code/managed-settings.json`, and a fuller toolchain. None of that is
 required to run Claude Code — start here, and copy those pieces in when you need them.
-
-A container is isolation, not a guarantee. Claude can still edit anything in the bind-mounted
-workspace, which lands on your host, and reach anything the network allows. Use it with
-repositories you trust, and don't mount host secrets such as `~/.ssh`.
